@@ -1,0 +1,116 @@
+trigger:
+  branches:
+    include:
+      - develop
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  name: FiapCloudGames
+
+variables:
+  buildConfiguration: "Release"
+  azureSubscription: 'PosFiapT4'
+  containerRegistry: 'fiapcloudgames-t04-acr-connection'
+  dockerRepository: 'solidarity-connection-donations'
+  resourceGroup: 'rg-fiapcloudgamest04-core'
+  testsArtifactName: 'fiap-cloud-games-binaries'
+  testsArtifactPath: '$(Pipeline.Workspace)/test-binaries'
+  aksClusterName: 'fiapcloudgamest04-aks'
+
+stages:
+  - stage: Build
+    displayName: "Build Solution"
+    jobs:
+      - job: Build
+        steps:
+          - task: UseDotNet@2
+            displayName: "Install .NET SDK"
+            inputs:
+              packageType: "sdk"
+              version: "8.x"
+
+          - script: dotnet restore SolidarityConnection.Donations.sln
+            displayName: "Restore NuGet packages"
+
+          - task: DotNetCoreCLI@2
+            displayName: "Build Solution"
+            inputs:
+              command: 'build'
+                projects: 'SolidarityConnection.Donations.sln'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+              - publish: $(Build.SourcesDirectory)/tests/SolidarityConnection.Donations.Tests/bin/Release/net8.0/
+            displayName: "Publish Binaries"
+            artifact: $(testsArtifactName)
+
+  - stage: Test
+    displayName: "Run Tests"
+    dependsOn: Build
+    jobs:
+      - job: Test
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: "Download test binaries"
+            inputs:
+              artifact: '$(testsArtifactName)'
+              path: '$(testsArtifactPath)'
+
+          - task: DotNetCoreCLI@2
+            displayName: "Run Unit Tests"
+            inputs:
+              command: 'test'
+              projects: '$(testsArtifactPath)/SolidarityConnection.Donations.Tests.dll'
+              arguments: '--no-build --collect:"XPlat Code Coverage"'
+              testRunTitle: 'Test'
+
+  - stage: Publish
+    displayName: "Publish Artifacts"
+    dependsOn: Test
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/develop')))
+    jobs:
+      - job: Publish
+        steps:
+            - task: Docker@2
+              displayName: 'Build Docker image'
+              inputs:
+                command: build
+                repository: $(dockerRepository)
+                Dockerfile: src/SolidarityConnection.Donations.Api/Dockerfile
+                buildContext: $(Build.SourcesDirectory)
+                tags: |
+                  latest
+                  $(Build.BuildId)
+                  $(Build.SourceBranchName)-$(Build.BuildId)
+                containerRegistry: '$(containerRegistry)'
+                arguments: --no-cache
+                buildArguments: |
+                  BUILD_CONFIGURATION=$(buildConfiguration)
+
+            - task: Docker@2
+              displayName: 'Push Docker image to ACR'
+              inputs:
+                command: push
+                repository: $(dockerRepository)
+                tags: |
+                  latest
+                  $(Build.BuildId)
+                  $(Build.SourceBranchName)-$(Build.BuildId)
+                containerRegistry: '$(containerRegistry)'
+
+            - task: AzureCLI@2
+              displayName: 'Deploy to AKS'
+              inputs:
+                azureSubscription: '$(azureSubscription)'
+                scriptType: 'ps'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+                  kubectl apply -f k8s/donations-configmap.yaml
+                  kubectl apply -f k8s/donations-service.yaml
+                  kubectl apply -f k8s/donations-deployment.yaml
+                  kubectl apply -f k8s/donations-hpa.yaml

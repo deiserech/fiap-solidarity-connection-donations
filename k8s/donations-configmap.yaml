@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: donations-api-config
+  labels:
+    app: solidarity-connection-donations
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  ServiceBus__UseWebSockets: "false"

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: solidarity-connection-donations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: solidarity-connection-donations
+  template:
+    metadata:
+      labels:
+        app: solidarity-connection-donations
+    spec:
+      containers:
+        - name: solidarity-connection-donations
+          image: fiapcloudgamest04acr.azurecr.io/solidarity-connection-donations:latest
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
+            successThreshold: 1
+          resources:
+            requests:
+              cpu: 50m
+              memory: 512Mi
+            limits:
+              cpu: 200m
+              memory: 600Mi
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: donations-secret
+                  key: ConnectionStrings__DefaultConnection
+            - name: ServiceBus__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: fiap-shared-secret
+                  key: ServiceBus__ConnectionString
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fiap-shared-secret
+                  key: NEW_RELIC_LICENSE_KEY
+            - name: PaymentGateway__BaseUrl
+              valueFrom:
+                secretKeyRef:
+                  name: fiap-shared-secret
+                  key: PaymentGateway__BaseUrl
+
