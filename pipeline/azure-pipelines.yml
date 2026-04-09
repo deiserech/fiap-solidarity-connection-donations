@@ -10,17 +10,17 @@ pr:
       - main
 
 pool:
-  name: FiapCloudGames
+  name: SolidarityConnection
 
 variables:
   buildConfiguration: "Release"
   azureSubscription: 'PosFiapT4'
-  containerRegistry: 'fiapcloudgames-t04-acr-connection'
+  containerRegistry: 'solidarityconnection-acr-connection'
   dockerRepository: 'solidarity-connection-donations'
-  resourceGroup: 'rg-fiapcloudgamest04-core'
-  testsArtifactName: 'fiap-cloud-games-binaries'
+  resourceGroup: 'rg-solidarityconnection-core'
+  testsArtifactName: 'solidarity-connection-binaries'
   testsArtifactPath: '$(Pipeline.Workspace)/test-binaries'
-  aksClusterName: 'fiapcloudgamest04-aks'
+  aksClusterName: 'solidarityconnection-aks'
 
 stages:
   - stage: Build

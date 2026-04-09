@@ -4,19 +4,19 @@ namespace SolidarityConnection.Donations.Api.Extensions
 {
     public static class SwaggerServiceCollectionExtensions
     {
-        public static IServiceCollection AddFiapCloudGamesSwagger(this IServiceCollection services)
+        public static IServiceCollection AddSwagger(this IServiceCollection services)
         {
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
                 {
-                    Title = "FIAP Cloud Games API",
+                    Title = "Solidarity Connection API",
                     Version = "v1",
-                    Description = "API para gerenciamento de jogos, biblioteca de usuários e promoções",
+                    Description = "API para gerenciamento de doadores da Solidarity Connection",
                     Contact = new OpenApiContact
                     {
-                        Name = "FIAP Cloud Games Team",
-                        Email = "support@fiapcloudgames.com"
+                        Name = "Solidarity Connection Team",
+                        Email = "support@solidarityconnection.com"
                     }
                 });
 

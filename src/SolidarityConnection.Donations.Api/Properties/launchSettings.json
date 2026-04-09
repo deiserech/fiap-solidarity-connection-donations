@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "FiapCloudGames.Payments.Api": {
+    "Solidarity Connection.Donations.Api": {
       "commandName": "Project",
       "launchBrowser": true,
       "launchUrl": "swagger",

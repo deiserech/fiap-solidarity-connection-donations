@@ -23,9 +23,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 
-builder.Services.AddFiapCloudGamesSwagger();
+builder.Services.AddSwagger();
 
-builder.Services.AddFiapCloudGamesOpenTelemetry();
+builder.Services.OpenTelemetry();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection") ?? ""));

@@ -29,7 +29,7 @@ namespace SolidarityConnection.Donations.Api.BackgroundServices.Donors
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var topic = _config["DONOR_TOPIC"] ?? "donors-upserted";
-            var subscription = _config["DONOR_SUBSCRIPTION"] ?? "fiap-cloud-games-payments";
+            var subscription = _config["DONOR_SUBSCRIPTION"] ?? "solidarity-connection-donations-api";
             try
             {
                 _processor = _sb.CreateProcessorWrapper(topic, subscription);

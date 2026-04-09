@@ -8,17 +8,17 @@ namespace SolidarityConnection.Donations.Api.Extensions
 {
     public static class OpenTelemetryServiceCollectionExtensions
     {
-        public static IServiceCollection AddFiapCloudGamesOpenTelemetry(this IServiceCollection services)
+        public static IServiceCollection OpenTelemetry(this IServiceCollection services)
         {
             var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Unknown";
 
             services.AddOpenTelemetry()
                 .ConfigureResource(resource => resource
-                    .AddService(serviceName: "fiap-payments-api")
-                    .AddAttributes(new[]
-                    {
+                    .AddService(serviceName: "solidarity-connection-donations-api")
+                    .AddAttributes(
+                    [
                         new KeyValuePair<string, object>("deployment.environment", environmentName)
-                    }))
+                    ]))
                 .WithTracing(builder =>
                 {
                     builder

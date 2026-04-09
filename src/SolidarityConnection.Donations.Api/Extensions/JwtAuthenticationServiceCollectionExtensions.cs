@@ -7,7 +7,7 @@ namespace SolidarityConnection.Donations.Api.Extensions
 {
     public static class JwtAuthenticationServiceCollectionExtensions
     {
-        public static IServiceCollection AddFiapCloudGamesJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
             var jwtSettings = configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["SecretKey"];

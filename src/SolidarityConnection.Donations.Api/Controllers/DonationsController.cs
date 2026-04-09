@@ -22,7 +22,6 @@ namespace SolidarityConnection.Donations.Api.Controllers
         /// <param name="dto">Donation request payload.</param>
         /// <returns>Returns the donation request status.</returns>
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(DonationRequestDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -43,7 +42,6 @@ namespace SolidarityConnection.Donations.Api.Controllers
         /// <param name="donorCode">Donor code.</param>
         /// <returns>Returns the donation information for the specified campaign and donor.</returns>
         [HttpGet("{code}")]
-        //[Authorize(Roles = "Admin, User")]
         [ProducesResponseType(typeof(DonationRequestDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByCampaignAndDonorAsync(int campaignCode, int donorCode)

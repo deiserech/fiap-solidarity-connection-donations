@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: solidarity-connection-donations
-          image: fiapcloudgamest04acr.azurecr.io/solidarity-connection-donations:latest
+          image: solidarityconnectionacr.azurecr.io/solidarity-connection-donations:latest
           ports:
             - containerPort: 80
           readinessProbe:
@@ -58,9 +58,4 @@ spec:
                 secretKeyRef:
                   name: fiap-shared-secret
                   key: NEW_RELIC_LICENSE_KEY
-            - name: PaymentGateway__BaseUrl
-              valueFrom:
-                secretKeyRef:
-                  name: fiap-shared-secret
-                  key: PaymentGateway__BaseUrl
 

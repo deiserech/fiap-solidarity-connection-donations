@@ -71,10 +71,10 @@ namespace SolidarityConnection.Donations.Application.Services
             Donation? createdDonation = null;
             try
             {
-                var paymentResult = await ProcessPayment(message, campaign, donor, cancellationToken);
+                var donationResult = await ProcessDonation(message, campaign, donor, cancellationToken);
 
-                donation.Status = paymentResult ? 2 : 3;
-                donation.FailureReason = paymentResult ? null : "Payment gateway declined request.";
+                donation.Status = donationResult ? 2 : 3;
+                donation.FailureReason = donationResult ? null : "Donation gateway declined request.";
 
                 createdDonation = await _donationRepository.AddAsync(donation);
                 _logger.LogInformation(
@@ -83,7 +83,7 @@ namespace SolidarityConnection.Donations.Application.Services
                     message.DonorCode,
                     message.CorrelationId);
 
-                success = paymentResult;
+                success = donationResult;
             }
             catch (Exception ex)
             {
@@ -103,27 +103,27 @@ namespace SolidarityConnection.Donations.Application.Services
             return _donationRepository.GetByCampaignAndDonorCodeAsync(campaignCode, donorCode);
         }
 
-        private async Task<bool> ProcessPayment(
+        private async Task<bool> ProcessDonation(
             DonationRequestedEvent message,
             CampaignReference campaign,
             DonorReference donor,
             CancellationToken cancellationToken)
         {
-            var isGatewayEnabled = bool.TryParse(_configuration["Features:PaymentGateway:Enabled"], out var enabled) && enabled;
+            var isGatewayEnabled = bool.TryParse(_configuration["Features:DonationGateway:Enabled"], out var enabled) && enabled;
             if (!isGatewayEnabled)
             {
-                _logger.LogInformation("Payment gateway disabled. Skipping payment processing.");
+                _logger.LogInformation("Donation gateway disabled. Skipping donation processing.");
                 return true;
             }
 
-            var baseUrl = _configuration["PaymentGateway:BaseUrl"];
+            var baseUrl = _configuration["DonationGateway:BaseUrl"];
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                _logger.LogError("Payment gateway BaseUrl configuration is missing.");
+                _logger.LogError("Donation gateway BaseUrl configuration is missing.");
                 return false;
             }
 
-            var route = _configuration["PaymentGateway:FunctionRoute"] ?? "/api/payments/authorize";
+            var route = _configuration["DonationGateway:FunctionRoute"] ?? "/api/donations/authorize";
 
             var url = baseUrl.TrimEnd('/') + (route.StartsWith("/") ? route : "/" + route);
 
@@ -141,7 +141,7 @@ namespace SolidarityConnection.Donations.Application.Services
             };
 
             var requestJson = JsonSerializer.Serialize(requestPayload);
-            _logger.LogInformation("Sending payment request to gateway: {Url} with payload: {Payload}", url, requestJson);
+            _logger.LogInformation("Sending donation request to gateway: {Url} with payload: {Payload}", url, requestJson);
 
             HttpResponseMessage response;
             try
@@ -151,7 +151,7 @@ namespace SolidarityConnection.Donations.Application.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling payment gateway function.");
+                _logger.LogError(ex, "Error calling donation gateway function.");
                 return false;
             }
 
@@ -167,40 +167,40 @@ namespace SolidarityConnection.Donations.Application.Services
                     // ignore errors reading error body
                 }
 
-                _logger.LogWarning("Payment gateway function returned non-success status code: {StatusCode}. Body: {Body}", response.StatusCode, errorBody);
+                _logger.LogWarning("Donation gateway function returned non-success status code: {StatusCode}. Body: {Body}", response.StatusCode, errorBody);
                 return false;
             }
 
-            PaymentGatewayResponseDto? responseContent;
+            DonationGatewayResponseDto? responseContent;
             try
             {
-                responseContent = await response.Content.ReadFromJsonAsync<PaymentGatewayResponseDto>(cancellationToken: cancellationToken);
-                _logger.LogDebug("Payment approved by Gateway: {@Response}", responseContent);
+                responseContent = await response.Content.ReadFromJsonAsync<DonationGatewayResponseDto>(cancellationToken: cancellationToken);
+                _logger.LogDebug("Donation approved by Gateway: {@Response}", responseContent);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deserializing payment gateway response.");
+                _logger.LogError(ex, "Error deserializing donation gateway response.");
                 return false;
             }
 
             if (responseContent is null)
             {
-                _logger.LogWarning("Payment gateway function returned empty response body.");
+                _logger.LogWarning("Donation gateway function returned empty response body.");
                 return false;
             }
 
             var approved = responseContent.Approved && string.Equals(responseContent.Status, "Approved", StringComparison.OrdinalIgnoreCase);
             if (!approved)
             {
-                _logger.LogWarning("Payment not approved by gateway. Status: {Status}", responseContent.Status);
+                _logger.LogWarning("Donation not approved by gateway. Status: {Status}", responseContent.Status);
             }
 
             return approved;
         }
 
-        private sealed class PaymentGatewayResponseDto
+        private sealed class DonationGatewayResponseDto
         {
-            public string? PaymentId { get; set; }
+            public string? DonationId { get; set; }
             public string? AuthorizationCode { get; set; }
             public string? Status { get; set; }
             public bool Approved { get; set; }
