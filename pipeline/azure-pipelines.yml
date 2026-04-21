@@ -41,10 +41,10 @@ stages:
             displayName: "Build Solution"
             inputs:
               command: 'build'
-                projects: 'SolidarityConnection.Donations.sln'
+              projects: 'SolidarityConnection.Donations.sln'
               arguments: '--configuration $(buildConfiguration) --no-restore'
 
-              - publish: $(Build.SourcesDirectory)/tests/SolidarityConnection.Donations.Tests/bin/Release/net8.0/
+          - publish: $(Build.SourcesDirectory)/tests/SolidarityConnection.Donations.Tests/bin/Release/net8.0/
             displayName: "Publish Binaries"
             artifact: $(testsArtifactName)
 
@@ -110,6 +110,8 @@ stages:
                 scriptLocation: 'inlineScript'
                 inlineScript: |
                   az aks get-credentials --resource-group $(resourceGroup) --name $(aksClusterName)
+                  kubectl apply -f k8s/donations-secret.yaml
+                  kubectl apply -f k8s/shared-secret.yaml
                   kubectl apply -f k8s/donations-configmap.yaml
                   kubectl apply -f k8s/donations-service.yaml
                   kubectl apply -f k8s/donations-deployment.yaml

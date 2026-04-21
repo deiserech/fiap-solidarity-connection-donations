@@ -22,6 +22,12 @@ namespace SolidarityConnection.Donations.Infrastructure.Mappings
             builder.Property(d => d.Status)
                 .IsRequired();
 
+            builder.Property(d => d.Attempts)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(d => d.LastRetryAt);
+
             builder.Property(d => d.CorrelationId)
                 .IsRequired();
 

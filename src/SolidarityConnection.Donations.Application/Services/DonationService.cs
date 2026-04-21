@@ -4,42 +4,32 @@ using SolidarityConnection.Donations.Application.Interfaces.Repositories;
 using SolidarityConnection.Donations.Application.Interfaces.Services;
 using SolidarityConnection.Donations.Domain.Entities;
 using SolidarityConnection.Donations.Domain.Events;
-using SolidarityConnection.Donations.Domain.Interfaces.Repositories;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 
 namespace SolidarityConnection.Donations.Application.Services
 {
     public class DonationService : IDonationService
     {
+        private const int StatusReceived = 1;
+        private const int StatusProcessing = 2;
+        private const int StatusProcessed = 3;
+        private const int StatusFailed = 4;
+
         private readonly IDonationRepository _donationRepository;
-        private readonly ICampaignReferenceRepository _campaignRepository;
-        private readonly IDonorReferenceRepository _donorRepository;
         private readonly IDonationRequestedEventPublisher _donationRequestedEventPublisher;
         private readonly IDonationProcessedEventPublisher _donationProcessedEventPublisher;
         private readonly ILogger<DonationService> _logger;
-        private readonly IConfiguration _configuration;
 
         public DonationService(
             IDonationRepository donationRepository,
-            ICampaignReferenceRepository campaignRepository,
-            IDonorReferenceRepository donorRepository,
             IDonationRequestedEventPublisher donationRequestedEventPublisher,
             IDonationProcessedEventPublisher donationProcessedEventPublisher,
-            ILogger<DonationService> logger,
-            IConfiguration configuration)
+            ILogger<DonationService> logger)
         {
             _donationRepository = donationRepository;
-            _campaignRepository = campaignRepository;
-            _donorRepository = donorRepository;
             _donationRequestedEventPublisher = donationRequestedEventPublisher;
             _donationProcessedEventPublisher = donationProcessedEventPublisher;
             _logger = logger;
-            _configuration = configuration;
         }
 
         public async Task CreateDonationRequest(DonationRequestDto dto)
@@ -49,46 +39,47 @@ namespace SolidarityConnection.Donations.Application.Services
 
         public async Task ProcessAsync(DonationRequestedEvent message, CancellationToken cancellationToken)
         {
-            var campaign = await _campaignRepository.GetByCodeAsync(message.CampaignCode)
-                ?? throw new InvalidOperationException("Campaign not found");
-
-            var donor = await _donorRepository.GetByCodeAsync(message.DonorCode)
-                ?? throw new InvalidOperationException("Donor not found");
+            if (await _donationRepository.ExistsAsync(message.DonationId))
+            {
+                _logger.LogInformation("Skipping duplicated donation message. DonationId={DonationId}", message.DonationId);
+                return;
+            }
 
             bool success = false;
 
             var donation = new Donation
             {
-                ProcessedAt = message.RequestedAt,
-                DonorId = donor.Id,
-                CampaignId = campaign.Id,
-                Amount = message.Amount,
+                Id = message.DonationId,
+                DonorId = message.DonorId,
+                CampaignId = message.CampaignId,
+                Amount = message.DonationAmount,
                 RequestedAt = message.RequestedAt,
-                CorrelationId = message.CorrelationId,
-                Status = 1
+                CorrelationId = message.DonationId,
+                Status = StatusReceived
             };
 
             Donation? createdDonation = null;
             try
             {
-                var donationResult = await ProcessDonation(message, campaign, donor, cancellationToken);
+                donation.Status = StatusProcessing;
+                success = await ProcessDonation(message, cancellationToken);
 
-                donation.Status = donationResult ? 2 : 3;
-                donation.FailureReason = donationResult ? null : "Donation gateway declined request.";
+                donation.Status = success ? StatusProcessed : StatusFailed;
+                donation.ProcessedAt = DateTimeOffset.UtcNow;
+                donation.FailureReason = success ? null : "Donation validation failed.";
 
                 createdDonation = await _donationRepository.AddAsync(donation);
                 _logger.LogInformation(
-                    "Donation created: CampaignCode={CampaignCode}, DonorCode={DonorCode}, CorrelationId={CorrelationId}",
-                    message.CampaignCode,
-                    message.DonorCode,
-                    message.CorrelationId);
+                    "Donation created: DonationId={DonationId}, CampaignId={CampaignId}, DonorId={DonorId}",
+                    message.DonationId,
+                    message.CampaignId,
+                    message.DonorId);
 
-                success = donationResult;
+                success = donation.Status == StatusProcessed;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating donation for CampaignCode: {CampaignCode}, DonorCode: {DonorCode}",
-                    message.CampaignCode, message.DonorCode);
+                _logger.LogError(ex, "Error creating donation for DonationId: {DonationId}", message.DonationId);
                 success = false;
                 throw;
             }
@@ -103,108 +94,26 @@ namespace SolidarityConnection.Donations.Application.Services
             return _donationRepository.GetByCampaignAndDonorCodeAsync(campaignCode, donorCode);
         }
 
-        private async Task<bool> ProcessDonation(
+        private Task<bool> ProcessDonation(
             DonationRequestedEvent message,
-            CampaignReference campaign,
-            DonorReference donor,
             CancellationToken cancellationToken)
         {
-            var isGatewayEnabled = bool.TryParse(_configuration["Features:DonationGateway:Enabled"], out var enabled) && enabled;
-            if (!isGatewayEnabled)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (message.DonationAmount <= 0)
             {
-                _logger.LogInformation("Donation gateway disabled. Skipping donation processing.");
-                return true;
+                _logger.LogWarning("Donation rejected by local validation: invalid amount. DonationId={DonationId}", message.DonationId);
+                return Task.FromResult(false);
             }
 
-            var baseUrl = _configuration["DonationGateway:BaseUrl"];
-            if (string.IsNullOrWhiteSpace(baseUrl))
+            if (message.CampaignId == Guid.Empty || message.DonorId == Guid.Empty)
             {
-                _logger.LogError("Donation gateway BaseUrl configuration is missing.");
-                return false;
+                _logger.LogWarning("Donation rejected by local validation: invalid campaign or donor. DonationId={DonationId}", message.DonationId);
+                return Task.FromResult(false);
             }
 
-            var route = _configuration["DonationGateway:FunctionRoute"] ?? "/api/donations/authorize";
-
-            var url = baseUrl.TrimEnd('/') + (route.StartsWith("/") ? route : "/" + route);
-
-            using var httpClient = new HttpClient();
-
-            var requestPayload = new
-            {
-                requestId = Guid.NewGuid().ToString(),
-                donationId = Guid.NewGuid(),
-                campaignCode = message.CampaignCode,
-                donorCode = message.DonorCode,
-                amount = message.Amount,
-                currency = "BRL",
-                paymentMethod = "credit_card"
-            };
-
-            var requestJson = JsonSerializer.Serialize(requestPayload);
-            _logger.LogInformation("Sending donation request to gateway: {Url} with payload: {Payload}", url, requestJson);
-
-            HttpResponseMessage response;
-            try
-            {
-                using var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-                response = await httpClient.PostAsync(url, content, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calling donation gateway function.");
-                return false;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                string? errorBody = null;
-                try
-                {
-                    errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                }
-                catch
-                {
-                    // ignore errors reading error body
-                }
-
-                _logger.LogWarning("Donation gateway function returned non-success status code: {StatusCode}. Body: {Body}", response.StatusCode, errorBody);
-                return false;
-            }
-
-            DonationGatewayResponseDto? responseContent;
-            try
-            {
-                responseContent = await response.Content.ReadFromJsonAsync<DonationGatewayResponseDto>(cancellationToken: cancellationToken);
-                _logger.LogDebug("Donation approved by Gateway: {@Response}", responseContent);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deserializing donation gateway response.");
-                return false;
-            }
-
-            if (responseContent is null)
-            {
-                _logger.LogWarning("Donation gateway function returned empty response body.");
-                return false;
-            }
-
-            var approved = responseContent.Approved && string.Equals(responseContent.Status, "Approved", StringComparison.OrdinalIgnoreCase);
-            if (!approved)
-            {
-                _logger.LogWarning("Donation not approved by gateway. Status: {Status}", responseContent.Status);
-            }
-
-            return approved;
-        }
-
-        private sealed class DonationGatewayResponseDto
-        {
-            public string? DonationId { get; set; }
-            public string? AuthorizationCode { get; set; }
-            public string? Status { get; set; }
-            public bool Approved { get; set; }
-            public DateTime ProcessedAt { get; set; }
+            _logger.LogInformation("Donation approved by local validation. DonationId={DonationId}", message.DonationId);
+            return Task.FromResult(true);
         }
 
     }

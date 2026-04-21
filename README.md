@@ -86,6 +86,21 @@ dotnet restore SolidarityConnection.Donations.sln
 dotnet run --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
 ```
 
+## Validacao local integrada com Core
+
+Este servico e validado junto do Core API para comprovar o fluxo assincrono de doacao.
+
+Use o guia completo no repositorio Core:
+
+- `../fiap-solidarity-connection/others/docs/validacao-local-docker-compose.md`
+
+Fluxo esperado na validacao:
+
+1) Core publica `DonationRequestedEvent`.
+2) Donations consome e processa.
+3) Donations publica `DonationProcessedEvent`.
+4) Core atualiza `total_raised_amount` na campanha.
+
 ## Testes
 
 ```bash
@@ -156,3 +171,9 @@ O pipeline esta em pipeline/azure-pipelines.yml e executa:
 - Testes
 - Build/Push da imagem
 - Deploy no AKS (branches develop e main)
+
+## Roteiro de apresentacao (15 minutos)
+
+Roteiro detalhado da demonstracao:
+
+- `../fiap-solidarity-connection/others/docs/roteiro-video-apresentacao-15min.md`

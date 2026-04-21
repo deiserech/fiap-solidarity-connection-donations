@@ -8,7 +8,7 @@ public class DonationProcessedEventPublisher : IDonationProcessedEventPublisher
 {
     private readonly IServiceBusPublisher _busPublisher;
     private readonly ILogger<DonationProcessedEventPublisher> _logger;
-    private const string DonationProcessedTopic = "donations-processed";
+    private const string DonationProcessedTopic = "donation-processed";
 
     public DonationProcessedEventPublisher(IServiceBusPublisher busPublisher, ILogger<DonationProcessedEventPublisher> logger)
     {
@@ -18,13 +18,20 @@ public class DonationProcessedEventPublisher : IDonationProcessedEventPublisher
 
     public async Task PublishAsync(DonationRequestedEvent requestEvent, Donation? donation, bool success)
     {
+        var donationId = donation?.Id ?? requestEvent.DonationId;
+        var campaignId = donation?.CampaignId ?? requestEvent.CampaignId;
+        var donationAmount = donation?.Amount ?? requestEvent.DonationAmount;
+        var processedAt = donation?.ProcessedAt ?? DateTimeOffset.UtcNow;
+        var status = success ? "Processed" : "Failed";
+        var errorMessage = success ? null : donation?.FailureReason ?? "Donation processing failed";
+
         var donationProcessedEvent = new DonationProcessedEvent(
-            donation?.Id,
-            donation?.Donor?.Code ?? requestEvent.DonorCode,
-            donation?.Campaign?.Code ?? requestEvent.CampaignCode,
-            donation?.ProcessedAt ?? requestEvent.RequestedAt,
-            success,
-            donation?.Amount ?? requestEvent.Amount);
+            donationId,
+            campaignId,
+            donationAmount,
+            status,
+            processedAt,
+            errorMessage);
 
         try
         {
@@ -33,9 +40,9 @@ public class DonationProcessedEventPublisher : IDonationProcessedEventPublisher
         catch (Exception e)
         {
             _logger.LogError(
-                "Error publishing DonationProcessedEvent: DonorCode={DonorCode}, CampaignCode={CampaignCode}. Message={Message}",
-                requestEvent.DonorCode,
-                requestEvent.CampaignCode,
+                "Error publishing DonationProcessedEvent: DonationId={DonationId}, CampaignId={CampaignId}. Message={Message}",
+                donationId,
+                campaignId,
                 e.Message);
         }
     }

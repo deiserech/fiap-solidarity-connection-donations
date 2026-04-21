@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: solidarity-connection-donations
+  namespace: solidarity-connection
 spec:
   replicas: 1
   selector:
@@ -15,6 +16,7 @@ spec:
       containers:
         - name: solidarity-connection-donations
           image: solidarityconnectionacr.azurecr.io/solidarity-connection-donations:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           readinessProbe:
@@ -43,6 +45,31 @@ spec:
               cpu: 200m
               memory: 600Mi
           env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: donations-api-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: DONATION_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: donations-api-config
+                  key: DONATION_TOPIC
+            - name: DONATION_SUBSCRIPTION
+              valueFrom:
+                configMapKeyRef:
+                  name: donations-api-config
+                  key: DONATION_SUBSCRIPTION
+            - name: NewRelic__OtlpEndpoint
+              valueFrom:
+                configMapKeyRef:
+                  name: donations-api-config
+                  key: NewRelic__OtlpEndpoint
+            - name: NewRelic__Protocol
+              valueFrom:
+                configMapKeyRef:
+                  name: donations-api-config
+                  key: NewRelic__Protocol
             - name: ConnectionStrings__DefaultConnection
               valueFrom:
                 secretKeyRef:

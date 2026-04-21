@@ -9,6 +9,8 @@ namespace SolidarityConnection.Donations.Domain.Entities
         public DateTimeOffset RequestedAt { get; set; }
         public DateTimeOffset? ProcessedAt { get; set; }
         public int Status { get; set; } = 1;
+        public int Attempts { get; set; }
+        public DateTimeOffset? LastRetryAt { get; set; }
         public Guid CorrelationId { get; set; }
         public string? FailureReason { get; set; }
 

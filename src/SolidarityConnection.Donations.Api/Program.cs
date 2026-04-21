@@ -25,7 +25,7 @@ builder.Services.AddHealthChecks();
 
 builder.Services.AddSwagger();
 
-builder.Services.OpenTelemetry();
+builder.Services.OpenTelemetry(configuration);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection") ?? ""));
