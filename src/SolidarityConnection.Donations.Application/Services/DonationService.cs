@@ -1,4 +1,3 @@
-using SolidarityConnection.Donations.Application.DTOs;
 using SolidarityConnection.Donations.Application.Interfaces.Publishers;
 using SolidarityConnection.Donations.Application.Interfaces.Repositories;
 using SolidarityConnection.Donations.Application.Interfaces.Services;
@@ -16,25 +15,17 @@ namespace SolidarityConnection.Donations.Application.Services
         private const int StatusFailed = 4;
 
         private readonly IDonationRepository _donationRepository;
-        private readonly IDonationRequestedEventPublisher _donationRequestedEventPublisher;
         private readonly IDonationProcessedEventPublisher _donationProcessedEventPublisher;
         private readonly ILogger<DonationService> _logger;
 
         public DonationService(
             IDonationRepository donationRepository,
-            IDonationRequestedEventPublisher donationRequestedEventPublisher,
             IDonationProcessedEventPublisher donationProcessedEventPublisher,
             ILogger<DonationService> logger)
         {
             _donationRepository = donationRepository;
-            _donationRequestedEventPublisher = donationRequestedEventPublisher;
             _donationProcessedEventPublisher = donationProcessedEventPublisher;
             _logger = logger;
-        }
-
-        public async Task CreateDonationRequest(DonationRequestDto dto)
-        {
-            await _donationRequestedEventPublisher.PublishAsync(dto);
         }
 
         public async Task ProcessAsync(DonationRequestedEvent message, CancellationToken cancellationToken)

@@ -5,7 +5,6 @@ namespace SolidarityConnection.Donations.Application.Interfaces.Services
 {
     public interface IDonationService
     {
-        Task CreateDonationRequest(DonationRequestDto dto);
         Task ProcessAsync(DonationRequestedEvent message, CancellationToken cancellationToken);
     }
 }

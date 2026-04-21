@@ -36,7 +36,6 @@ builder.Services.AddScoped<IDonationService, DonationService>();
 
 builder.Services.AddScoped<IDonationRequestedMessageHandler, DonationRequestedMessageHandler>();
 
-builder.Services.AddScoped<IDonationRequestedEventPublisher, DonationRequestedEventPublisher>();
 builder.Services.AddScoped<IDonationProcessedEventPublisher, DonationProcessedEventPublisher>();
 
 builder.Services.AddHostedService<DonationRequestedConsumer>();
