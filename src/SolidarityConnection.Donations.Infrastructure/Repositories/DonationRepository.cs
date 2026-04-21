@@ -17,26 +17,12 @@ namespace SolidarityConnection.Donations.Infrastructure.Repositories
             _logger = logger;
         }
 
-        public async Task<Donation?> GetByCampaignAndDonorCodeAsync(int campaignCode, int donorCode)
-        {
-            _logger.LogDebug("Fetching donation by CampaignCode: {CampaignCode} and DonorCode: {DonorCode}", campaignCode, donorCode);
-            return await _context.Donations
-                .Include(d => d.Campaign)
-                .Include(d => d.Donor)
-                .FirstOrDefaultAsync(d => d.Campaign != null
-                    && d.Campaign.Code == campaignCode
-                    && d.Donor != null
-                    && d.Donor.Code == donorCode);
-        }
-
         public async Task<Donation> AddAsync(Donation donation)
         {
             _logger.LogDebug("Adding donation for CampaignId: {CampaignId}, DonorId: {DonorId}", donation.CampaignId, donation.DonorId);
             _context.Donations.Add(donation);
             await _context.SaveChangesAsync();
             return await _context.Donations
-                .Include(d => d.Campaign)
-                .Include(d => d.Donor)
                 .FirstOrDefaultAsync(d => d.Id == donation.Id) ?? donation;
         }
 
@@ -44,17 +30,13 @@ namespace SolidarityConnection.Donations.Infrastructure.Repositories
         {
             _logger.LogDebug("Listing all donations");
             return await _context.Donations
-                .Include(d => d.Campaign)
-                .Include(d => d.Donor)
-                .ToListAsync();
+               .ToListAsync();
         }
 
         public async Task<Donation?> GetByIdAsync(Guid id)
         {
             _logger.LogDebug("Fetching donation by Id: {Id}", id);
             return await _context.Donations
-                .Include(d => d.Campaign)
-                .Include(d => d.Donor)
                 .FirstOrDefaultAsync(d => d.Id == id);
         }
 

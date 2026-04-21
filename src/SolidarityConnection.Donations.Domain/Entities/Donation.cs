@@ -13,8 +13,5 @@ namespace SolidarityConnection.Donations.Domain.Entities
         public DateTimeOffset? LastRetryAt { get; set; }
         public Guid CorrelationId { get; set; }
         public string? FailureReason { get; set; }
-
-        public CampaignReference? Campaign { get; set; }
-        public DonorReference? Donor { get; set; }
     }
 }

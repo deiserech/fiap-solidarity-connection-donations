@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using SolidarityConnection.Donations.Domain.Entities;
 
 namespace SolidarityConnection.Donations.Application.DTOs
 {
@@ -24,29 +23,6 @@ namespace SolidarityConnection.Donations.Application.DTOs
 
         [JsonIgnore]
         public Guid CampaignId { get; set; }
-
-        public static Donation ToEntity(DonationRequestDto dto)
-        {
-            return new()
-            {
-                DonorId = dto.DonorId,
-                CampaignId = dto.CampaignId,
-                Amount = dto.Amount,
-                RequestedAt = dto.RequestedAt,
-                CorrelationId = Guid.NewGuid(),
-                Status = 1
-            };
-        }
-
-        public static DonationRequestDto FromEntity(Donation entity)
-        {
-            return new() {
-                DonorCode = entity.Donor!.Code,
-                CampaignCode = entity.Campaign!.Code,
-                RequestedAt = entity.RequestedAt,
-                Amount = entity.Amount
-            };
-        }
 
     }
 }

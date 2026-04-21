@@ -34,16 +34,6 @@ namespace SolidarityConnection.Donations.Infrastructure.Mappings
             builder.Property(d => d.FailureReason)
                 .HasMaxLength(500);
 
-            builder.HasOne(d => d.Donor)
-                .WithMany()
-                .HasForeignKey(d => d.DonorId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(d => d.Campaign)
-                .WithMany()
-                .HasForeignKey(d => d.CampaignId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.ToTable("Donations");
         }
     }

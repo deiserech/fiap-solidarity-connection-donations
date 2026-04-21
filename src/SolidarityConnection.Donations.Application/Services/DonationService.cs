@@ -89,11 +89,6 @@ namespace SolidarityConnection.Donations.Application.Services
             }
         }
 
-        public Task<Donation?> GetByCampaignAndDonorCodeAsync(int campaignCode, int donorCode)
-        {
-            return _donationRepository.GetByCampaignAndDonorCodeAsync(campaignCode, donorCode);
-        }
-
         private Task<bool> ProcessDonation(
             DonationRequestedEvent message,
             CancellationToken cancellationToken)

@@ -4,7 +4,6 @@ namespace SolidarityConnection.Donations.Application.Interfaces.Repositories
 {
     public interface IDonationRepository
     {
-        Task<Donation?> GetByCampaignAndDonorCodeAsync(int campaignCode, int donorCode);
         Task<Donation> AddAsync(Donation donation);
         Task<IEnumerable<Donation>> GetAllAsync();
         Task<Donation?> GetByIdAsync(Guid id);
