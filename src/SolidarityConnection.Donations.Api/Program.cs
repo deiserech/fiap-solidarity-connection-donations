@@ -25,7 +25,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection") ?? ""));
 
 var sbConnectionString = configuration["ServiceBus:ConnectionString"] ?? "";
-builder.Services.Configure<ServiceBusOptions>(opts => { opts.ConnectionString = sbConnectionString; });
 
 builder.Services.AddSingleton(new ServiceBusClient(sbConnectionString));
 builder.Services.AddSingleton<IServiceBusClientWrapper, ServiceBusClientWrapper>();
