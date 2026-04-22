@@ -53,6 +53,5 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 /Es.md
-/Screenshot 2025-08-04 200533.png
 /.vs
-/clean.ps1
+**/appsettings.Development.json
