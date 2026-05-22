@@ -20,7 +20,6 @@ Dependencias principais:
 - `src/SolidarityConnection.Donations.Infrastructure`: EF Core, repositorios e Service Bus
 - `src/SolidarityConnection.Donations.Shared`: contratos e utilitarios compartilhados
 - `k8s/`: manifests Kubernetes
-- `pipeline/`: Azure Pipelines
 
 ## Requisitos
 
