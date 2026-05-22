@@ -77,13 +77,13 @@ dotnet restore SolidarityConnection.Donations.sln
 docker run -d --name solidarity-donations-sql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=<SUA_SENHA_FORTE> -p 1433:1433 mcr.microsoft.com/mssql/server:2025-latest
 ```
 
-3. Configure a conexao com o banco e com o Service Bus. O projeto carrega `appsettings.Development.json` no perfil de desenvolvimento e tambem aceita sobrescrita por variaveis de ambiente ou user-secrets.
+3. Configure a conexao com o banco e com o Service Bus. O projeto carrega `appsettings.Development.json` no perfil de desenvolvimento e tambem aceita sobrescrita por variaveis de ambiente ou core-secret.
 
-Exemplo com user-secrets:
+Exemplo com core-secret:
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=donations-db;User Id=SA;Password=<SUA_SENHA_FORTE>;TrustServerCertificate=True;Encrypt=False;" --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
-dotnet user-secrets set "ServiceBus:ConnectionString" "Endpoint=sb://<NAMESPACE>.servicebus.windows.net/;SharedAccessKeyName=<NOME_DA_CHAVE>;SharedAccessKey=<SUA_CHAVE>;" --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
+dotnet core-secret set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=donations-db;User Id=SA;Password=<SUA_SENHA_FORTE>;TrustServerCertificate=True;Encrypt=False;" --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
+dotnet core-secret set "ServiceBus:ConnectionString" "Endpoint=sb://<NAMESPACE>.servicebus.windows.net/;SharedAccessKeyName=<NOME_DA_CHAVE>;SharedAccessKey=<SUA_CHAVE>;" --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
 ```
 
 4. Execute a aplicacao:
