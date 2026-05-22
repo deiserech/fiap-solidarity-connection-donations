@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: solidarity-connection-donations
-          image: solidarityconnectionacr.azurecr.io/solidarity-connection-donations:latest
+          image: ghcr.io/deiserech/fiap-solidarity-connection-donations:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
@@ -78,11 +78,11 @@ spec:
             - name: ServiceBus__ConnectionString
               valueFrom:
                 secretKeyRef:
-                  name: fiap-shared-secret
+                  name: shared-secret
                   key: ServiceBus__ConnectionString
             - name: NEW_RELIC_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: fiap-shared-secret
+                  name: shared-secret
                   key: NEW_RELIC_LICENSE_KEY
 
