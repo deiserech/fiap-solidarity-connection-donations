@@ -1,111 +1,116 @@
 # SolidarityConnection.Donations
 
-API de Donations do projeto Solidarity Connection. Responsavel por intake de doacoes, processamento assincrono e integracao com Service Bus.
-
-## Conteudo
-
-- Visao geral
-- Estrutura do repositorio
-- Requisitos
-- Executar localmente
-- Testes
-- Docker
-- Kubernetes (AKS)
-- Configuracoes
-- Pipelines
+API de Donations do projeto Solidarity Connection. Este servico consome eventos de doacao, persiste o estado no SQL Server e publica o evento de doacao processada no Azure Service Bus.
 
 ## Visao geral
 
-Este servico expoe endpoints REST para intake e processamento de doacoes. Ele utiliza:
+Nesta versao, a aplicacao funciona como um host com background service e health check. Ela nao expoe controllers de negocio no projeto atual; a validacao local principal e feita por `health`, logs e integracao com o Core.
 
-- SQL Server para persistencia
-- Azure Service Bus para mensageria
-- Donation Gateway externo (quando configurado)
+Dependencias principais:
 
-## Arquitetura e fluxo
-
-```mermaid
-flowchart LR
-  client[Cliente] --> api[Donations API]
-  api --> sql[SQL Server]
-  api --> sb[Azure Service Bus]
-  api --> gw[Donation Gateway]
-  sb --> worker[Consumers]
-```
-
-## Fluxo da aplicacao
-
-```mermaid
-sequenceDiagram
-  participant C as Cliente
-  participant API as Donations API
-  participant DB as SQL Server
-  participant SB as Service Bus
-  participant DG as Donation Gateway
-  participant WK as Consumers
-
-  C->>API: Requisicao (Doacao/Consulta)
-  API->>DB: Persistir/Buscar dados
-  API->>DG: Processar doacao
-  API-->>C: Resposta HTTP
-
-  API->>SB: Publica evento
-  SB->>WK: Consumo do evento
-  WK->>DB: Atualiza status
-```
+- SQL Server para persistencia e migracoes EF Core
+- Azure Service Bus para consumo e publicacao de eventos
+- OpenTelemetry e New Relic para observabilidade
 
 ## Estrutura do repositorio
 
-- src/SolidarityConnection.Donations.Api: API Web
-- src/SolidarityConnection.Donations.Application: regras de negocio
-- src/SolidarityConnection.Donations.Domain: modelos de dominio
-- src/SolidarityConnection.Donations.Infrastructure: persistencia e integracoes
-- src/SolidarityConnection.Donations.Shared: contratos e utilitarios
-- tests/SolidarityConnection.Donations.Tests: testes automatizados
-- k8s/: manifests Kubernetes
-- pipeline/: Azure Pipelines
+- `src/SolidarityConnection.Donations.Api`: host da aplicacao, background service e health check
+- `src/SolidarityConnection.Donations.Application`: regras de negocio e casos de uso
+- `src/SolidarityConnection.Donations.Domain`: entidades e eventos de dominio
+- `src/SolidarityConnection.Donations.Infrastructure`: EF Core, repositorios e Service Bus
+- `src/SolidarityConnection.Donations.Shared`: contratos e utilitarios compartilhados
+- `tests/SolidarityConnection.Donations.Tests`: testes automatizados
+- `k8s/`: manifests Kubernetes
+- `pipeline/`: Azure Pipelines
 
 ## Requisitos
 
 - .NET SDK 8.x
-- Docker
-- kubectl
-- Azure CLI (para AKS)
+- Docker Desktop
+- SQL Server local ou em Docker para a validacao local
+- Azure Service Bus acessivel para a validacao local
+- `kubectl` e Azure CLI somente se for publicar no AKS
 
-## Executar localmente
+## Como subir localmente
 
-1) Restaurar dependencias:
+### Opcao recomendada 
+
+Ambos os servicos fazem bootstrap automatico do banco ao iniciar: se o banco ainda nao existir, ele e criado e as migracoes EF Core sao aplicadas antes da API ficar disponivel.
+
+Se o objetivo for validar o fluxo fim a fim com o Core, suba o ambiente compartilhado a partir do repositório `fiap-solidarity-connection`, que já contém o compose de validação para os dois servicos.
+
+Passo a passo:
+
+1. Mantenha os dois repositórios lado a lado na mesma pasta:
+   - `c:\Repos\HACKATON\fiap-solidarity-connection`
+   - `c:\Repos\HACKATON\fiap-solidarity-connection-donations`
+2. No repositório do Core, siga o guia `../fiap-solidarity-connection/others/docs/validacao-local-docker-compose.md`.
+3. Crie o arquivo `.env` local com base no exemplo do README do Core.
+4. Suba a stack na raiz do Core com Docker Compose passando o arquivo como parametro:
+
+```bash
+docker compose --env-file .env -f docker-compose.validation.yml up -d --build
+```
+
+5. Verifique os health checks:
+
+```bash
+curl http://localhost:8080/health
+curl http://localhost:8081/health
+```
+
+6. Valide o fluxo de doacao pelo Core. O Donations sera iniciado automaticamente pelo compose.
+
+### Execucao local somente da Donations API
+
+Use esta opção se quiser subir apenas este servico para debug.
+
+1. Restore das dependencias:
 
 ```bash
 dotnet restore SolidarityConnection.Donations.sln
 ```
 
-2) Executar a API:
+2. Suba um SQL Server local na porta 1433, caso ainda nao tenha um disponivel. Se voce ja tiver um banco local configurado, use ele no passo seguinte:
+
+```bash
+docker run -d --name solidarity-donations-sql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=<SUA_SENHA_FORTE> -p 1433:1433 mcr.microsoft.com/mssql/server:2025-latest
+```
+
+3. Configure a conexao com o banco e com o Service Bus. O projeto carrega `appsettings.Development.json` no perfil de desenvolvimento e tambem aceita sobrescrita por variaveis de ambiente ou user-secrets.
+
+Exemplo com user-secrets:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=donations-db;User Id=SA;Password=<SUA_SENHA_FORTE>;TrustServerCertificate=True;Encrypt=False;" --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
+dotnet user-secrets set "ServiceBus:ConnectionString" "Endpoint=sb://<NAMESPACE>.servicebus.windows.net/;SharedAccessKeyName=<NOME_DA_CHAVE>;SharedAccessKey=<SUA_CHAVE>;" --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
+```
+
+4. Execute a aplicacao:
 
 ```bash
 dotnet run --project src/SolidarityConnection.Donations.Api/SolidarityConnection.Donations.Api.csproj
 ```
 
-## Validacao local integrada com Core
-
-Este servico e validado junto do Core API para comprovar o fluxo assincrono de doacao.
-
-Use o guia completo no repositorio Core:
-
-- `../fiap-solidarity-connection/others/docs/validacao-local-docker-compose.md`
-
-Fluxo esperado na validacao:
-
-1) Core publica `DonationRequestedEvent`.
-2) Donations consome e processa.
-3) Donations publica `DonationProcessedEvent`.
-4) Core atualiza `total_raised_amount` na campanha.
-
-## Testes
+5. Confirme a subida no health check:
 
 ```bash
-dotnet test SolidarityConnection.Donations.sln -c Release
+curl http://localhost:5060/health
 ```
+
+Observacao: no perfil de desenvolvimento, a API expõe `http://localhost:5060` e `https://localhost:5050`.
+
+## Validacao integrada com o Core
+
+O fluxo esperado entre os dois repositorios e:
+
+1. O Core publica `DonationRequestedEvent`.
+2. A Donations consome o evento e processa a doacao.
+3. A Donations publica `DonationProcessedEvent`.
+4. O Core atualiza `total_raised_amount` da campanha.
+
+Se voce estiver fazendo a correção manualmente, o caminho mais rapido e usar o compose do repositório Core, pois ele já sobe o SQL Server, o Core e esta API em conjunto.
+
 
 ## Docker
 
@@ -123,7 +128,7 @@ docker run -p 8080:80 solidarity-connection-donations:local
 
 ## Kubernetes (AKS)
 
-Manifests estao em k8s/.
+Os manifests estao em `k8s/`.
 
 Aplicar:
 
@@ -140,40 +145,25 @@ Verificar rollout:
 kubectl rollout status deployment/solidarity-connection-donations
 ```
 
-## Arquitetura no Kubernetes
+## Configuracoes importantes
 
-```mermaid
-flowchart TB
-  subgraph AKS[AKS Cluster]
-    ing[Ingress/Service] --> dep[Deployment Donations]
-    dep --> pod[Pod Donations]
-    pod --> cm[ConfigMap]
-    pod --> sec[Secrets]
-  end
-  pod --> sql[SQL Server]
-  pod --> sb[Service Bus]
-  pod --> dg[Donation Gateway]
-```
+As variaveis mais relevantes sao:
 
-## Configuracoes
+- `ConnectionStrings__DefaultConnection`
+- `ServiceBus__ConnectionString`
+- `DONATION_TOPIC`
+- `DONATION_SUBSCRIPTION`
+- `DONATION_PROCESSED_TOPIC`
 
-Variaveis principais (exemplos):
-
-- ConnectionStrings__DefaultConnection (Secret)
-- ServiceBus__ConnectionString (Secret)
-- PaymentGateway__BaseUrl (Secret)
+No ambiente local, a conexao com o banco costuma apontar para `localhost,1433` e o banco `donations-db`, mas voce pode usar qualquer SQL Server acessivel desde que ajuste a connection string.
 
 ## Pipelines
 
-O pipeline esta em pipeline/azure-pipelines.yml e executa:
+O pipeline esta em `pipeline/azure-pipelines.yml` e executa:
 
 - Build
 - Testes
-- Build/Push da imagem
-- Deploy no AKS (branches develop e main)
+- Build e publish da imagem
+- Deploy no AKS nas branches `develop` e `main`
 
-## Roteiro de apresentacao (15 minutos)
 
-Roteiro detalhado da demonstracao:
-
-- `../fiap-solidarity-connection/others/docs/roteiro-video-apresentacao-15min.md`

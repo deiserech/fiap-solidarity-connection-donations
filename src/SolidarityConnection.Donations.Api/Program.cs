@@ -21,8 +21,9 @@ builder.Services.AddHealthChecks();
 
 builder.Services.OpenTelemetry(configuration);
 
+var dbConnectionString = configuration.GetConnectionString("DefaultConnection") ?? "";
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(configuration.GetConnectionString("DefaultConnection") ?? ""));
+    options.UseSqlServer(dbConnectionString));
 
 var sbConnectionString = configuration["ServiceBus:ConnectionString"] ?? "";
 
@@ -40,6 +41,8 @@ builder.Services.AddScoped<IDonationProcessedEventPublisher, DonationProcessedEv
 builder.Services.AddHostedService<DonationRequestedConsumer>();
 
 var app = builder.Build();
+
+await app.EnsureDatabaseAndMigrationsAsync(dbConnectionString);
 
 app.UseMiddleware<TracingEnrichmentMiddleware>();
 
