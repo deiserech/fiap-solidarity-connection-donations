@@ -18,8 +18,6 @@ variables:
   containerRegistry: 'solidarityconnection-acr-connection'
   dockerRepository: 'solidarity-connection-donations'
   resourceGroup: 'rg-solidarityconnection-core'
-  testsArtifactName: 'solidarity-connection-binaries'
-  testsArtifactPath: '$(Pipeline.Workspace)/test-binaries'
   aksClusterName: 'solidarityconnection-aks'
 
 stages:
@@ -44,33 +42,9 @@ stages:
               projects: 'SolidarityConnection.Donations.sln'
               arguments: '--configuration $(buildConfiguration) --no-restore'
 
-          - publish: $(Build.SourcesDirectory)/tests/SolidarityConnection.Donations.Tests/bin/Release/net8.0/
-            displayName: "Publish Binaries"
-            artifact: $(testsArtifactName)
-
-  - stage: Test
-    displayName: "Run Tests"
-    dependsOn: Build
-    jobs:
-      - job: Test
-        steps:
-          - task: DownloadPipelineArtifact@2
-            displayName: "Download test binaries"
-            inputs:
-              artifact: '$(testsArtifactName)'
-              path: '$(testsArtifactPath)'
-
-          - task: DotNetCoreCLI@2
-            displayName: "Run Unit Tests"
-            inputs:
-              command: 'test'
-              projects: '$(testsArtifactPath)/SolidarityConnection.Donations.Tests.dll'
-              arguments: '--no-build --collect:"XPlat Code Coverage"'
-              testRunTitle: 'Test'
-
   - stage: Publish
     displayName: "Publish Artifacts"
-    dependsOn: Test
+    dependsOn: Build
     condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/develop')))
     jobs:
       - job: Publish

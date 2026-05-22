@@ -19,7 +19,6 @@ Dependencias principais:
 - `src/SolidarityConnection.Donations.Domain`: entidades e eventos de dominio
 - `src/SolidarityConnection.Donations.Infrastructure`: EF Core, repositorios e Service Bus
 - `src/SolidarityConnection.Donations.Shared`: contratos e utilitarios compartilhados
-- `tests/SolidarityConnection.Donations.Tests`: testes automatizados
 - `k8s/`: manifests Kubernetes
 - `pipeline/`: Azure Pipelines
 
@@ -159,11 +158,14 @@ No ambiente local, a conexao com o banco costuma apontar para `localhost,1433` e
 
 ## Pipelines
 
-O pipeline esta em `pipeline/azure-pipelines.yml` e executa:
+O pipeline principal esta em `.github/workflows/ci-cd.yml` e executa:
 
-- Build
-- Testes
-- Build e publish da imagem
-- Deploy no AKS nas branches `develop` e `main`
+- Build da solucao .NET
+- Build da imagem Docker no CI
+- Publicacao da imagem no GitHub Container Registry
+
+O gatilho principal e a branch `main`, entao cada push nela dispara o pipeline.
+
+Se voce quiser manter o Azure DevOps como alternativa, o arquivo legado continua em `pipeline/azure-pipelines.yml`.
 
 
