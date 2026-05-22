@@ -55,3 +55,4 @@ nunit-*.xml
 /Es.md
 /.vs
 **/appsettings.Development.json
+k8s/donations-secret-local.yaml
